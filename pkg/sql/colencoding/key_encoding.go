@@ -157,7 +157,11 @@ func DecodeKeyValsToCols(
 // to the idx'th slot of the input exec.Vec.
 // See the analog, DecodeTableKey, in sqlbase/column_type_encoding.go.
 func decodeTableKeyToCol(
-	vec coldata.Vec, idx uint16, valType *types.T, key []byte, dir sqlbase.IndexDescriptor_Direction,
+	vec coldata.Vec,
+	idx uint16,
+	valType *types.T,
+	key []byte,
+	dir sqlbase.IndexDescriptor_Direction,
 ) ([]byte, error) {
 	if (dir != sqlbase.IndexDescriptor_ASC) && (dir != sqlbase.IndexDescriptor_DESC) {
 		return nil, errors.AssertionFailedf("invalid direction: %d", log.Safe(dir))
@@ -245,8 +249,13 @@ func skipTableKey(
 	if key, isNull = encoding.DecodeIfNull(key); isNull {
 		return key, nil
 	}
+	n, err := encoding.PeekLength(key)
+	if err != nil {
+		return nil, err
+	}
+	return key[n:], nil
 	var rkey []byte
-	var err error
+	//var err error
 	switch valType.Family() {
 	case types.BoolFamily, types.IntFamily, types.DateFamily:
 		if dir == sqlbase.IndexDescriptor_ASC {
@@ -260,7 +269,7 @@ func skipTableKey(
 		} else {
 			rkey, _, err = encoding.DecodeFloatDescending(key)
 		}
-	case types.BytesFamily, types.StringFamily:
+	case types.BytesFamily, types.StringFamily, types.UuidFamily:
 		if dir == sqlbase.IndexDescriptor_ASC {
 			rkey, _, err = encoding.DecodeBytesAscending(key, nil)
 		} else {
