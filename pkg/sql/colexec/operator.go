@@ -46,6 +46,13 @@ type Operator interface {
 	execinfra.OpNode
 }
 
+// NextIntermediateState is a temporary interface introduced to facilitate the
+// refactor of Next(context.Context) coldata.Batch to
+// Next(context.Context, coldata.Batch)
+type NextIntermediateState interface {
+	NextNew(context.Context, coldata.Batch)
+}
+
 // NonExplainable is a marker interface which identifies an Operator that
 // should be omitted from the output of EXPLAIN (VEC). Note that VERBOSE
 // explain option will override the omitting behavior.

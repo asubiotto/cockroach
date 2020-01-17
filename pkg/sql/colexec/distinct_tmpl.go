@@ -220,8 +220,13 @@ func (p *sortedDistinct_TYPEOp) reset() {
 
 func (p *sortedDistinct_TYPEOp) Next(ctx context.Context) coldata.Batch {
 	batch := p.input.Next(ctx)
+	p.NextNew(ctx, batch)
+	return batch
+}
+
+func (p *sortedDistinct_TYPEOp) NextNew(ctx context.Context, batch coldata.Batch) {
 	if batch.Length() == 0 {
-		return batch
+		return
 	}
 	outputCol := p.outputCol
 	vec := batch.ColVec(p.sortedDistinctCol)
@@ -284,8 +289,6 @@ func (p *sortedDistinct_TYPEOp) Next(ctx context.Context) coldata.Batch {
 
 	p.lastVal = lastVal
 	p.lastValNull = lastValNull
-
-	return batch
 }
 
 // partitioner_TYPE partitions an arbitrary-length colVec by running a distinct

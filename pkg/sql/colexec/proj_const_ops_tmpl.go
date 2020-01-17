@@ -86,12 +86,17 @@ type _OP_CONST_NAME struct {
 
 func (p _OP_CONST_NAME) Next(ctx context.Context) coldata.Batch {
 	batch := p.input.Next(ctx)
+	p.NextNew(ctx, batch)
+	return batch
+}
+
+func (p _OP_CONST_NAME) NextNew(ctx context.Context, batch coldata.Batch) {
 	n := batch.Length()
 	if p.outputIdx == batch.Width() {
 		p.allocator.AppendColumn(batch, coltypes._RET_TYP)
 	}
 	if n == 0 {
-		return batch
+		return
 	}
 	vec := batch.ColVec(p.colIdx)
 	// {{if _IS_CONST_LEFT}}
@@ -109,7 +114,7 @@ func (p _OP_CONST_NAME) Next(ctx context.Context) coldata.Batch {
 	// Although we didn't change the length of the batch, it is necessary to set
 	// the length anyway (this helps maintaining the invariant of flat bytes).
 	batch.SetLength(n)
-	return batch
+	return
 }
 
 func (p _OP_CONST_NAME) Init() {

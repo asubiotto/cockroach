@@ -113,10 +113,12 @@ func TestSortedDistinct(t *testing.T) {
 }
 
 func BenchmarkSortedDistinct(b *testing.B) {
-	rng, _ := randutil.NewPseudoRand()
-	ctx := context.Background()
-
-	batch := testAllocator.NewMemBatch([]coltypes.T{coltypes.Int64, coltypes.Int64, coltypes.Int64})
+	var (
+		rng, _ = randutil.NewPseudoRand()
+		ctx    = context.Background()
+		typs   = []coltypes.T{coltypes.Int64, coltypes.Int64, coltypes.Int64}
+	)
+	batch := testAllocator.NewMemBatch(typs)
 	aCol := batch.ColVec(1).Int64()
 	bCol := batch.ColVec(2).Int64()
 	lastA := int64(0)
@@ -136,12 +138,12 @@ func BenchmarkSortedDistinct(b *testing.B) {
 	source := NewRepeatableBatchSource(batch)
 	source.Init()
 
-	distinct, err := NewOrderedDistinct(source, []uint32{1, 2}, []coltypes.T{coltypes.Int64, coltypes.Int64, coltypes.Int64})
+	distinct, err := NewOrderedDistinct(source, []uint32{1, 2}, typs)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	// don't count the artificial zeroOp'd column in the throughput
+	// Don't count the artificial zeroOp'd column in the throughput.
 	for _, nulls := range []bool{false, true} {
 		b.Run(fmt.Sprintf("nulls=%t", nulls), func(b *testing.B) {
 			if nulls {
