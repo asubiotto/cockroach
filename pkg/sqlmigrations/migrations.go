@@ -545,6 +545,7 @@ func ExpectedDescriptorIDs(
 // required migrations have been run (and running all those that are definitely
 // safe to run).
 func (m *Manager) EnsureMigrations(ctx context.Context, bootstrapVersion roachpb.Version) error {
+	log.Infof(ctx, "ensureing migrations")
 	// First, check whether there are any migrations that need to be run.
 	completedMigrations, err := getCompletedMigrations(ctx, m.db, m.codec)
 	if err != nil {

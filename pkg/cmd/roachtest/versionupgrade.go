@@ -101,6 +101,11 @@ func runVersionUpgrade(ctx context.Context, t *test, c *cluster, buildVersion ve
 	testFeaturesStep := versionUpgradeTestFeatures.step(c.All())
 	schemaChangeStep := runSchemaChangeWorkloadStep(c.All().randNode()[0], 10 /* maxOps */, 2 /* concurrency */)
 
+	// TODO(asubiotto): Set predecessorVersion to an empty string to signify
+	//  the build version.
+	realPredecessorVersion := predecessorVersion
+	predecessorVersion = ""
+
 	// The steps below start a cluster at predecessorVersion (from a fixture),
 	// then start an upgrade that is rolled back, and finally start and finalize
 	// the upgrade. Between each step, we run the feature tests defined in
@@ -113,7 +118,7 @@ func runVersionUpgrade(ctx context.Context, t *test, c *cluster, buildVersion ve
 		// moving on.
 		//
 		// See the comment on createCheckpoints for details on fixtures.
-		uploadAndStartFromCheckpointFixture(c.All(), predecessorVersion),
+		uploadAndStartFromCheckpointFixture(c.All(), realPredecessorVersion),
 		uploadAndInitSchemaChangeWorkload(),
 		waitForUpgradeStep(c.All()),
 		testFeaturesStep,

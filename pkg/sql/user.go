@@ -19,6 +19,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlbase"
+	"github.com/cockroachdb/cockroach/pkg/util"
 	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
@@ -187,6 +188,18 @@ var userLoginTimeout = settings.RegisterPublicNonNegativeDurationSetting(
 
 // GetAllRoles returns a "set" (map) of Roles -> true.
 func (p *planner) GetAllRoles(ctx context.Context) (map[string]bool, error) {
+	// TODO(asubiotto): Check if distsql is on.
+	distsqlRows, err := p.ExtendedEvalContext().ExecCfg.InternalExecutor.QueryEx(
+		ctx, "check-distsq", p.txn,
+		sqlbase.InternalExecutorSessionDataOverride{User: security.RootUser},
+		"SHOW distsql")
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range distsqlRows {
+		log.Infof(ctx, "found that distsql is %s, calling from %s", row.String(), util.GetSmallTrace(2))
+	}
+
 	query := `SELECT username FROM system.users`
 	rows, err := p.ExtendedEvalContext().ExecCfg.InternalExecutor.QueryEx(
 		ctx, "read-users", p.txn,

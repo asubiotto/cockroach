@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/cockroach/pkg/base"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/sql/execinfra"
@@ -26,6 +27,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
 	"github.com/cockroachdb/cockroach/pkg/util/humanizeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
+	"github.com/cockroachdb/cockroach/pkg/util/retry"
 	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/tracing"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -223,7 +225,16 @@ func (m *Outbox) mainLoop(ctx context.Context) error {
 	if m.stream == nil {
 		var conn *grpc.ClientConn
 		var err error
-		conn, err = m.flowCtx.Cfg.NodeDialer.DialNoBreaker(ctx, m.nodeID, rpc.DefaultClass)
+		retryOpts := base.DefaultRetryOptions()
+		retryOpts.Closer = make(chan struct{})
+		connectionAttemptStartTime := timeutil.Now()
+		for r := retry.StartWithCtx(ctx, retryOpts); r.Next(); {
+			conn, err = m.flowCtx.Cfg.NodeDialer.DialNoBreaker(ctx, m.nodeID, rpc.DefaultClass)
+			if err != nil && timeutil.Since(connectionAttemptStartTime) < SettingFlowStreamTimeout.Get(&m.flowCtx.Cfg.Settings.SV) {
+				continue
+			}
+			break
+		}
 		if err != nil {
 			// Log any Dial errors. This does not have a verbosity check due to being
 			// a critical part of query execution: if this step doesn't work, the
@@ -231,6 +242,7 @@ func (m *Outbox) mainLoop(ctx context.Context) error {
 			log.Infof(ctx, "outbox: connection dial error: %+v", err)
 			return err
 		}
+
 		client := execinfrapb.NewDistSQLClient(conn)
 		if log.V(2) {
 			log.Infof(ctx, "outbox: calling FlowStream")
