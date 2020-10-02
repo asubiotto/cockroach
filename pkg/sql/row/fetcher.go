@@ -607,6 +607,7 @@ func (rf *Fetcher) firstBatchLimit(limitHint int64) int64 {
 func (rf *Fetcher) StartScanFrom(ctx context.Context, f kvBatchFetcher) error {
 	rf.indexKey = nil
 	if rf.kvFetcher != nil {
+		// TODO(asubiotto): This Close is the one that's causing an error "no bytes in account ro release".
 		rf.kvFetcher.Close(ctx)
 	}
 	rf.kvFetcher = newKVFetcher(f, rf.mon)
